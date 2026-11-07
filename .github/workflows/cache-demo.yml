@@ -32,7 +32,7 @@ jobs:
         run: |
           bazelisk clean --expunge
           rm -rf ~/.cache/bazel-cache-example/disk-cache
-          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          bazelisk build //:report 2>&1 | tee build.log
           ./scripts/verify-build.sh build.log 3 0 0
           cat bazel-bin/report.txt
           diff -u - bazel-bin/report.txt <<'EOF'
@@ -44,33 +44,47 @@ jobs:
 
       - name: "Step 2: Rebuild in the same server (in-memory)"
         run: |
-          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          bazelisk build //:report 2>&1 | tee build.log
           ./scripts/verify-build.sh build.log 0 0 0
 
       - name: "Step 3: Rebuild after a server restart (local action cache)"
         run: |
           bazelisk shutdown
-          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          bazelisk build //:report 2>&1 | tee build.log
           ./scripts/verify-build.sh build.log 0 3 0
 
-      - name: "Step 4: Rebuild after a full clean (disk cache)"
+      - name: "Step 4: Rebuild after a full clean without the disk cache"
+        run: |
+          bazelisk clean --expunge
+          bazelisk build //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 3 0 0
+
+      - name: "Step 5: Fill the disk cache"
+        run: |
+          bazelisk clean --expunge
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 3 0 0
+
+      - name: "Step 6: Rebuild after a full clean with the disk cache"
         run: |
           bazelisk clean --expunge
           bazelisk build --config=disk //:report 2>&1 | tee build.log
           ./scripts/verify-build.sh build.log 0 0 3
 
-      - name: "Step 5: Change one input"
+      - name: "Step 7: Change one input"
         run: |
           echo 'Howdy' > data/greeting.txt
           bazelisk build --config=disk //:report 2>&1 | tee build.log
           ./scripts/verify-build.sh build.log 2 0 0
+          grep -q 'Howdy, ALICE!' bazel-bin/report.txt
 
-      - name: "Step 6: Revert the change"
+      - name: "Step 8: Revert the change"
         run: |
           echo 'Hello' > data/greeting.txt
           git diff --exit-code data/greeting.txt
           bazelisk build --config=disk //:report 2>&1 | tee build.log
           ./scripts/verify-build.sh build.log 0 0 2
+          grep -q 'Hello, ALICE!' bazel-bin/report.txt
 
   populate-disk-cache:
     name: Populate on-disk cache
