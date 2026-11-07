@@ -123,7 +123,7 @@ jobs:
           path: ~/.cache/bazel-cache-example/disk-cache
           key: bazel-disk-cache-${{ github.run_id }}-${{ github.run_attempt }}
           fail-on-cache-miss: true
-      - name: "Sharing the disk cache across machines"
+      - name: Build with the restored disk cache
         run: |
           bazelisk clean --expunge
           bazelisk build --config=disk //:report 2>&1 | tee build.log
