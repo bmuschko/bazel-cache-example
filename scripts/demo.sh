@@ -7,6 +7,8 @@ cd "$(dirname "$0")/.."
 BAZEL="${BAZEL:-bazelisk}"
 TARGET="//:report"
 DISK_CACHE_DIR="${HOME}/.cache/bazel-cache-example/disk-cache"
+GREETING_FILE="data/greeting.txt"
+ORIGINAL_GREETING="$(cat "${GREETING_FILE}")"
 
 # Builds the target and asserts how many actions ran, hit the action cache, and hit the disk cache.
 build_and_check() {
@@ -45,10 +47,7 @@ build_and_check() {
 }
 
 full_demo() {
-  local greeting_file="data/greeting.txt"
-  local original_greeting
-  original_greeting="$(cat "${greeting_file}")"
-  trap 'printf "%s\n" "${original_greeting}" > "${greeting_file}"' EXIT
+  trap 'printf "%s\n" "${ORIGINAL_GREETING}" > "${GREETING_FILE}"' EXIT
 
   "${BAZEL}" clean --expunge
   rm -rf "${DISK_CACHE_DIR}"
@@ -62,10 +61,10 @@ full_demo() {
   "${BAZEL}" clean --expunge
   build_and_check "4. Rebuild after clean --expunge: outputs come from the on-disk cache" 0 0 3
 
-  printf 'Howdy\n' > "${greeting_file}"
+  printf 'Howdy\n' > "${GREETING_FILE}"
   build_and_check "5. Change one input: only dependent actions execute" 2 0 0
 
-  printf "%s\n" "${original_greeting}" > "${greeting_file}"
+  printf "%s\n" "${ORIGINAL_GREETING}" > "${GREETING_FILE}"
   build_and_check "6. Revert the change: the previous outputs come from the on-disk cache" 0 0 2
 }
 
