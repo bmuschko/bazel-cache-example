@@ -43,6 +43,19 @@ INFO: 4 processes: 1 internal, 3 darwin-sandbox.
 
 On Linux the strategy is `linux-sandbox` or `processwrapper-sandbox` instead of `darwin-sandbox`.
 
+The output is written to the output base, which `bazel-bin` in the project root links to.
+
+```shell
+cat bazel-bin/report.txt
+```
+
+```
+Greetings report
+Hello, ALICE!
+Hello, BOB!
+Hello, CAROL!
+```
+
 ## Step 2: Rebuild in the same server (in-memory)
 
 ```shell

@@ -34,6 +34,13 @@ jobs:
           rm -rf ~/.cache/bazel-cache-example/disk-cache
           bazelisk build --config=disk //:report 2>&1 | tee build.log
           ./scripts/verify-build.sh build.log 3 0 0
+          cat bazel-bin/report.txt
+          diff -u - bazel-bin/report.txt <<'EOF'
+          Greetings report
+          Hello, ALICE!
+          Hello, BOB!
+          Hello, CAROL!
+          EOF
 
       - name: "Step 2: Rebuild in the same server (in-memory)"
         run: |
