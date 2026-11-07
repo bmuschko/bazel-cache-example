@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   local-caches:
     name: In-memory and on-disk caches (${{ matrix.os }})
@@ -23,8 +27,43 @@ jobs:
         with:
           bazelisk-version: 1.30.0
           bazelisk-cache: true
-      - name: Run cache demo
-        run: ./scripts/demo.sh full
+
+      - name: "Step 1: Cold build"
+        run: |
+          bazelisk clean --expunge
+          rm -rf ~/.cache/bazel-cache-example/disk-cache
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 3 0 0
+
+      - name: "Step 2: Rebuild in the same server (in-memory)"
+        run: |
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 0 0 0
+
+      - name: "Step 3: Rebuild after a server restart (local action cache)"
+        run: |
+          bazelisk shutdown
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 0 3 0
+
+      - name: "Step 4: Rebuild after a full clean (disk cache)"
+        run: |
+          bazelisk clean --expunge
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 0 0 3
+
+      - name: "Step 5: Change one input"
+        run: |
+          echo 'Howdy' > data/greeting.txt
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 2 0 0
+
+      - name: "Step 6: Revert the change"
+        run: |
+          echo 'Hello' > data/greeting.txt
+          git diff --exit-code data/greeting.txt
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 0 0 2
 
   populate-disk-cache:
     name: Populate on-disk cache
@@ -36,7 +75,11 @@ jobs:
           bazelisk-version: 1.30.0
           bazelisk-cache: true
       - name: Build with an empty disk cache
-        run: ./scripts/demo.sh populate
+        run: |
+          bazelisk clean --expunge
+          rm -rf ~/.cache/bazel-cache-example/disk-cache
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 3 0 0
       - name: Save disk cache
         uses: actions/cache/save@v6
         with:
@@ -59,5 +102,8 @@ jobs:
           path: ~/.cache/bazel-cache-example/disk-cache
           key: bazel-disk-cache-${{ github.run_id }}-${{ github.run_attempt }}
           fail-on-cache-miss: true
-      - name: Build with the restored disk cache
-        run: ./scripts/demo.sh reuse
+      - name: "Sharing the disk cache across machines"
+        run: |
+          bazelisk clean --expunge
+          bazelisk build --config=disk //:report 2>&1 | tee build.log
+          ./scripts/verify-build.sh build.log 0 0 3

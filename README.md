@@ -127,8 +127,8 @@ INFO: 4 processes: 3 disk cache hit, 1 internal.
 
 ## GitHub Actions
 
-The workflow in `.github/workflows/cache-demo.yml` automates the steps above.
-`scripts/demo.sh` runs each build and fails if the process summary does not match the expected counts.
+The workflow in `.github/workflows/cache-demo.yml` runs every step above as a separate workflow step.
+After each build, `scripts/verify-build.sh` fails the step if the process summary does not match the expected counts.
 
 - `local-caches` runs steps 1 through 6 on Linux and macOS.
-- `populate-disk-cache` fills the disk cache and saves it with `actions/cache`. `reuse-disk-cache` then restores it on a fresh runner and asserts that every action is a disk cache hit.
+- `populate-disk-cache` fills the disk cache and saves it with `actions/cache`. `reuse-disk-cache` then restores it on a fresh runner and runs the commands from "Sharing the disk cache across machines".
