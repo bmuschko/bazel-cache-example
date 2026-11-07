@@ -1,0 +1,63 @@
+name: Bazel cache demo
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-caches:
+    name: In-memory and on-disk caches (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: bazel-contrib/setup-bazel@0.19.1
+        with:
+          bazelisk-version: 1.30.0
+          bazelisk-cache: true
+      - name: Run cache demo
+        run: ./scripts/demo.sh full
+
+  populate-disk-cache:
+    name: Populate on-disk cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: bazel-contrib/setup-bazel@0.19.1
+        with:
+          bazelisk-version: 1.30.0
+          bazelisk-cache: true
+      - name: Build with an empty disk cache
+        run: ./scripts/demo.sh populate
+      - name: Save disk cache
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/bazel-cache-example/disk-cache
+          key: bazel-disk-cache-${{ github.run_id }}-${{ github.run_attempt }}
+
+  reuse-disk-cache:
+    name: Reuse on-disk cache on a fresh runner
+    needs: populate-disk-cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: bazel-contrib/setup-bazel@0.19.1
+        with:
+          bazelisk-version: 1.30.0
+          bazelisk-cache: true
+      - name: Restore disk cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/bazel-cache-example/disk-cache
+          key: bazel-disk-cache-${{ github.run_id }}-${{ github.run_attempt }}
+          fail-on-cache-miss: true
+      - name: Build with the restored disk cache
+        run: ./scripts/demo.sh reuse

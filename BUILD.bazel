@@ -1,0 +1,27 @@
+# Each action sleeps to make the cost of re-execution obvious.
+
+genrule(
+    name = "names",
+    srcs = ["data/names.txt"],
+    outs = ["names_upper.txt"],
+    cmd = "sleep 3 && tr '[:lower:]' '[:upper:]' < $< > $@",
+)
+
+genrule(
+    name = "greetings",
+    srcs = [
+        "data/greeting.txt",
+        ":names",
+    ],
+    outs = ["greetings.txt"],
+    cmd = "sleep 3 && greeting=$$(cat $(location data/greeting.txt)) && " +
+          "while read -r name; do echo \"$$greeting, $$name!\"; done " +
+          "< $(location :names) > $@",
+)
+
+genrule(
+    name = "report",
+    srcs = [":greetings"],
+    outs = ["report.txt"],
+    cmd = "sleep 3 && { echo 'Greetings report'; cat $<; } > $@",
+)

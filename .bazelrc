@@ -1,0 +1,5 @@
+# Keeps log output free of ANSI codes so the process summary can be parsed.
+common --color=no
+
+# Enables the on-disk cache that survives clean builds and can be shared across jobs.
+build:disk --disk_cache=~/.cache/bazel-cache-example/disk-cache
